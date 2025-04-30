@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { parseCSV } from '@/lib/csv-parser';
+import { parse } from 'papaparse';
+
+// Add config for Edge runtime
+export const config = {
+  runtime: 'edge'
+};
 
 export async function POST(request: NextRequest) {
-  console.log('API route hit: /api/generate');
-  console.log('Request headers:', Object.fromEntries(request.headers.entries()));
+  console.log('API route handler started');
   
   try {
-    console.log('Parsing request body...');
     const body = await request.json();
-    console.log('Request body received:', { csvData: body.csvData ? 'Present (truncated)' : 'Missing', tableWidth: body.tableWidth });
+    console.log('Request body received', { hasData: !!body.csvData, tableWidth: body.tableWidth });
     
     const { csvData, tableWidth = 800 } = body;
 
@@ -18,7 +21,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse the CSV data
-    const parsedData = parseCSV(csvData);
+    const parseResult = parse(csvData, { header: true });
+    
+    // Transform to expected format
+    const parsedData = {
+      columns: parseResult.meta.fields || [],
+      rows: parseResult.data as Record<string, string>[]
+    };
     if (parsedData.columns.length === 0 || parsedData.rows.length === 0) {
       return NextResponse.json({ error: 'Invalid CSV data' }, { status: 400 });
     }
@@ -42,24 +51,21 @@ export async function POST(request: NextRequest) {
 }
 
 interface TableData {
-  columns: { key: string; label: string }[];
+  columns: string[];
   rows: Record<string, string>[];
 }
 
 function generateTableHtml(data: TableData, tableWidth: number = 800) {
   const { columns, rows } = data;
 
-  // Generate the table HTML
-  const tableRows = rows.map((row: Record<string, string>) => {
-    const cells = columns.map(
-      (column: { key: string; label: string }) => `<td style="padding: 8px; border-bottom: 1px solid #e5e7eb; word-break: break-word;">${row[column.key] || '-'}</td>`
-    ).join('');
-    return `<tr style="border-bottom: 1px solid #e5e7eb;">${cells}</tr>`;
-  }).join('');
+  // Generate table headers
+  const tableHeaders = columns.map(column => `<th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb;">${column}</th>`).join('');
 
-  const tableHeaders = columns.map(
-    (column: { key: string; label: string }) => `<th style="padding: 12px 8px; text-align: left; border-bottom: 1px solid #e5e7eb; font-weight: 500; white-space: nowrap;">${column.label}</th>`
-  ).join('');
+  // Generate table rows
+  const tableRows = rows.map(row => {
+    const cells = columns.map(column => `<td style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb;">${row[column] || ''}</td>`).join('');
+    return `<tr>${cells}</tr>`;
+  }).join('');
 
   return `
     <!DOCTYPE html>
