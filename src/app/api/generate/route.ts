@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import puppeteer from 'puppeteer-core';
-import chromium from '@sparticuz/chromium';
 import { parseCSV } from '@/lib/csv-parser';
 
 export async function POST(request: NextRequest) {
@@ -21,49 +19,16 @@ export async function POST(request: NextRequest) {
     // Generate HTML for the table
     const tableHtml = generateTableHtml(parsedData);
 
-    // Launch a headless browser optimized for serverless environments
-    const browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
-      // @ts-ignore - ignoreHTTPSErrors is valid for puppeteer-core but TypeScript doesn't recognize it
-      ignoreHTTPSErrors: true,
-    });
-    const page = await browser.newPage();
-
-    // Set the content and wait for it to load
-    await page.setContent(tableHtml, { waitUntil: 'networkidle0' });
-    
-    // Wait for the table to be fully rendered
-    await page.waitForSelector('.table-container');
-    
-    // Get the table container element
-    const tableElement = await page.$('.table-container');
-    if (!tableElement) {
-      throw new Error('Table element not found');
-    }
-    
-    // Take a screenshot of just the table element
-    const screenshot = await tableElement.screenshot({ 
-      type: 'png',
-      omitBackground: false
-    });
-
-    // Close the browser
-    await browser.close();
-
-    // Return the image
-    return new NextResponse(screenshot, {
+    // Return the HTML directly for client-side rendering
+    return new NextResponse(tableHtml, {
       headers: {
-        'Content-Type': 'image/png',
-        'Content-Disposition': 'attachment; filename="table.png"',
+        'Content-Type': 'text/html',
       },
     });
   } catch (error) {
-    console.error('Error generating image:', error);
+    console.error('Error generating table HTML:', error);
     return NextResponse.json(
-      { error: 'Failed to generate image' },
+      { error: 'Failed to generate table HTML' },
       { status: 500 }
     );
   }
@@ -102,6 +67,16 @@ function generateTableHtml(data: TableData) {
         th { background-color: #f5f5f5; }
         tr:hover { background-color: #f9fafb; }
       </style>
+      <script>
+        // This script will run when the page loads
+        window.onload = function() {
+          // Send a message to the parent window with the HTML content
+          window.parent.postMessage({
+            type: 'TABLE_HTML_READY',
+            html: document.documentElement.outerHTML
+          }, '*');
+        };
+      </script>
     </head>
     <body>
       <div class="table-container">

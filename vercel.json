@@ -1,13 +1,9 @@
 {
+  "regions": ["iad1"],
   "functions": {
-    "src/app/api/generate/route.ts": {
+    "src/app/api/**/*.ts": {
       "memory": 1024,
       "maxDuration": 10
-    }
-  },
-  "build": {
-    "env": {
-      "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "true"
     }
   }
 }
