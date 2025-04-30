@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 import { parseCSV } from '@/lib/csv-parser';
 
 export async function POST(request: NextRequest) {
@@ -20,8 +21,15 @@ export async function POST(request: NextRequest) {
     // Generate HTML for the table
     const tableHtml = generateTableHtml(parsedData);
 
-    // Launch a headless browser
-    const browser = await puppeteer.launch({ headless: true });
+    // Launch a headless browser optimized for serverless environments
+    const browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+      // @ts-ignore - ignoreHTTPSErrors is valid for puppeteer-core but TypeScript doesn't recognize it
+      ignoreHTTPSErrors: true,
+    });
     const page = await browser.newPage();
 
     // Set the content and wait for it to load
