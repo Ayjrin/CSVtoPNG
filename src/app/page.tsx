@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
+import Image from 'next/image';
 import { FileUpload } from '@/components/FileUpload';
 import { TableComponent } from '@/components/TableComponent';
 import { ParsedCsvData } from '@/lib/csv-parser';
@@ -115,8 +116,16 @@ export default function Home() {
               <CardContent className="overflow-visible p-4">
                 {imageUrl ? (
                   <div className="border p-2 bg-white">
-                    {/* Using next/image would be better for performance, but using img for simplicity */}
-                    <img src={imageUrl} alt="Generated table" className="w-full" />
+                    <div className="relative w-full">
+                      <Image 
+                        src={imageUrl} 
+                        alt="Generated table" 
+                        width={800} 
+                        height={600} 
+                        style={{ width: '100%', height: 'auto' }} 
+                        unoptimized // Important for data URLs
+                      />
+                    </div>
                   </div>
                 ) : (
                   <div className="overflow-visible">

@@ -17,6 +17,8 @@ const Table = React.forwardRef<
   </div>
 ))
 
+Table.displayName = "Table"
+
 function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
