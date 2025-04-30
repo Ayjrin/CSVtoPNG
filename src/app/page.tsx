@@ -21,6 +21,8 @@ export default function Home() {
   const [parsedData, setParsedData] = useState<ParsedCsvData>({ columns: [], rows: [] });
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [tableWidth, setTableWidth] = useState<number>(800); // Default width
+  const [error, setError] = useState<string | null>(null); // Add error state
+  const [isLoading, setIsLoading] = useState<boolean>(false); // Add loading state
   const tableRef = useRef<HTMLDivElement | null>(null);
   const resizeStartXRef = useRef<number>(0);
   const initialWidthRef = useRef<number>(800);
@@ -33,13 +35,37 @@ export default function Home() {
 
   const generateImage = async () => {
     if (tableRef.current && parsedData.columns.length > 0) {
+      setIsLoading(true);
+      setError(null);
+      
+      console.log('Generating image...');
+      console.log('Table ref exists:', !!tableRef.current);
+      console.log('Table dimensions:', {
+        offsetWidth: tableRef.current.offsetWidth,
+        offsetHeight: tableRef.current.offsetHeight,
+        clientWidth: tableRef.current.clientWidth,
+        clientHeight: tableRef.current.clientHeight,
+        scrollWidth: tableRef.current.scrollWidth,
+        scrollHeight: tableRef.current.scrollHeight
+      });
+      console.log('Current table width setting:', tableWidth);
+      
       try {
         // First, set the width of the table element
         if (tableRef.current) {
+          console.log('Setting table width to:', `${tableWidth}px`);
           tableRef.current.style.width = `${tableWidth}px`;
+          console.log('Table width after setting:', tableRef.current.style.width);
         }
         
         // Then generate the image
+        console.log('Calling toPng with options:', {
+          quality: 0.95,
+          pixelRatio: 2,
+          canvasWidth: tableWidth,
+          canvasHeight: tableRef.current.offsetHeight
+        });
+        
         const dataUrl = await toPng(tableRef.current, { 
           quality: 0.95,
           pixelRatio: 2, // Higher resolution
@@ -53,10 +79,21 @@ export default function Home() {
           canvasHeight: tableRef.current.offsetHeight,
           backgroundColor: 'white'
         });
+        
+        console.log('Image generated successfully, data URL length:', dataUrl.length);
         setImageUrl(dataUrl);
+        setIsLoading(false);
       } catch (error) {
         console.error('Error generating image:', error);
+        setError(`Failed to generate image: ${error instanceof Error ? error.message : String(error)}`);
+        setIsLoading(false);
       }
+    } else {
+      console.warn('Cannot generate image: table reference or data is missing', {
+        tableRefExists: !!tableRef.current,
+        columnsLength: parsedData.columns.length
+      });
+      setError('Cannot generate image: table reference or data is missing');
     }
   };
 
@@ -125,8 +162,9 @@ export default function Home() {
                     <Button
                       onClick={generateImage}
                       variant="default"
+                      disabled={isLoading}
                     >
-                      Generate Image
+                      {isLoading ? 'Generating...' : 'Generate Image'}
                     </Button>
                   )}
                   {imageUrl && (
@@ -139,6 +177,21 @@ export default function Home() {
                   )}
                 </div>
               </CardHeader>
+              
+              {/* Error message display */}
+              {error && (
+                <div className="px-6 py-2 mb-2 bg-red-50 border border-red-200 text-red-700 rounded">
+                  <p className="text-sm font-medium">Error: {error}</p>
+                </div>
+              )}
+              
+              {/* Loading indicator */}
+              {isLoading && (
+                <div className="px-6 py-2 mb-2 bg-blue-50 border border-blue-200 text-blue-700 rounded flex items-center">
+                  <div className="mr-2 animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                  <p className="text-sm font-medium">Generating image...</p>
+                </div>
+              )}
               <CardContent className="overflow-visible p-4">
                 {imageUrl ? (
                   <div className="border p-2 bg-white">

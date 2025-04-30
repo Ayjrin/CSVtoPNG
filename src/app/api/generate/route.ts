@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { parseCSV } from '@/lib/csv-parser';
 
 export async function POST(request: NextRequest) {
+  console.log('API route hit: /api/generate');
+  console.log('Request headers:', Object.fromEntries(request.headers.entries()));
+  
   try {
+    console.log('Parsing request body...');
     const body = await request.json();
+    console.log('Request body received:', { csvData: body.csvData ? 'Present (truncated)' : 'Missing', tableWidth: body.tableWidth });
+    
     const { csvData, tableWidth = 800 } = body;
 
     if (!csvData) {
+      console.log('Error: CSV data is missing');
       return NextResponse.json({ error: 'CSV data is required' }, { status: 400 });
     }
 

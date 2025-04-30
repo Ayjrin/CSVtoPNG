@@ -55,19 +55,33 @@ export default function TestPage() {
     
     setLoading(true);
     setError(null);
+    
+    // Add logging for debugging
+    console.log('Submitting form with CSV data length:', csvData?.length);
+    console.log('Current table width:', tableWidth);
+    console.log('API URL being called:', '/api/generate');
 
     try {
       // Call the API to get the HTML
+      console.log('Sending API request...');
+      const requestBody = { csvData, tableWidth };
+      console.log('Request payload:', requestBody);
+      
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ csvData, tableWidth }),
+        body: JSON.stringify(requestBody),
       });
+      
+      console.log('API response status:', response.status);
+      console.log('API response status text:', response.statusText);
+      console.log('API response headers:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+        console.error('API request failed with status:', response.status);
+        throw new Error(`API error: ${response.status} - ${response.statusText}`);
       }
 
       // Get the HTML content
