@@ -26,21 +26,21 @@ export const TableComponent: React.FC<TableComponentProps> = ({ data, tableRef }
   }
 
   return (
-    <div ref={tableRef} className="bg-white border">
+    <div ref={tableRef} className="bg-white border rounded-none">
       <div className="w-full">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
               {columns.map((column) => (
-                <TableHead key={column.key} className="font-medium whitespace-nowrap">
+                <TableHead key={column.key} className="font-medium whitespace-nowrap bg-gray-100">
                   {column.label}
                 </TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.key}>
+            {rows.map((row, rowIndex) => (
+              <TableRow key={row.key} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                 {columns.map((column) => (
                   <TableCell key={`${row.key}-${column.key}`} className="break-words">
                     {row[column.key] || "-"}

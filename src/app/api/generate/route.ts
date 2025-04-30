@@ -4,7 +4,7 @@ import { parseCSV } from '@/lib/csv-parser';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { csvData } = body;
+    const { csvData, tableWidth = 800 } = body;
 
     if (!csvData) {
       return NextResponse.json({ error: 'CSV data is required' }, { status: 400 });
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate HTML for the table
-    const tableHtml = generateTableHtml(parsedData);
+    const tableHtml = generateTableHtml(parsedData, tableWidth);
 
     // Return the HTML directly for client-side rendering
     return new NextResponse(tableHtml, {
@@ -39,7 +39,7 @@ interface TableData {
   rows: Record<string, string>[];
 }
 
-function generateTableHtml(data: TableData) {
+function generateTableHtml(data: TableData, tableWidth: number = 800) {
   const { columns, rows } = data;
 
   // Generate the table HTML
@@ -62,7 +62,7 @@ function generateTableHtml(data: TableData) {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; padding: 0; background-color: white; }
-        .table-container { border: 1px solid #e5e7eb; background-color: white; }
+        .table-container { border: 1px solid #e5e7eb; background-color: white; width: ${tableWidth}px; }
         table { width: 100%; border-collapse: collapse; }
         th { background-color: #f5f5f5; }
         tr:hover { background-color: #f9fafb; }

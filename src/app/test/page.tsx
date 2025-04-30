@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { toPng } from 'html-to-image';
 
@@ -9,14 +9,18 @@ export default function TestPage() {
   const [tableHtml, setTableHtml] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [tableWidth, setTableWidth] = useState<number>(800);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const resizeStartXRef = useRef<number>(0);
+  const initialWidthRef = useRef<number>(800);
 
   // Listen for messages from the iframe
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.data && event.data.type === 'TABLE_HTML_READY') {
-        // Once we have the HTML, we can generate an image from it
-        generateImageFromIframe();
+      if (event.data === 'iframe-loaded') {
+        // The iframe has loaded, now we can capture it
+        captureIframe();
       }
     };
 
@@ -24,116 +28,192 @@ export default function TestPage() {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  const testApi = async () => {
+  // Resize handlers for the table width
+  const handleResizeStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    resizeStartXRef.current = e.clientX;
+    initialWidthRef.current = tableWidth;
+    
+    const handleResizeMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - resizeStartXRef.current;
+      const newWidth = Math.max(400, initialWidthRef.current + deltaX); // Minimum width of 400px
+      setTableWidth(newWidth);
+    };
+    
+    const handleResizeEnd = () => {
+      document.removeEventListener('mousemove', handleResizeMove);
+      document.removeEventListener('mouseup', handleResizeEnd);
+    };
+    
+    document.addEventListener('mousemove', handleResizeMove);
+    document.addEventListener('mouseup', handleResizeEnd);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    const csvData = formData.get('csvData') as string;
+    
     setLoading(true);
     setError(null);
-    setImageUrl(null);
-    try {
-      // Sample CSV data
-      const csvData = `Issue Title,Severity,Problem Description,Affected Area
-Fragmented Tools,Moderate,Description here,Operational`;
 
-      // Call the API endpoint
+    try {
+      // Call the API to get the HTML
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ csvData }),
+        body: JSON.stringify({ csvData, tableWidth }),
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API request failed: ${response.status} ${errorText}`);
+        throw new Error(`API error: ${response.status}`);
       }
 
       // Get the HTML content
       const html = await response.text();
-      setTableHtml(html);
-    } catch (error) {
-      console.error('Error testing API:', error);
-      setError(error instanceof Error ? error.message : 'Unknown error');
+      
+      // Set the HTML content in the iframe
+      if (iframeRef.current) {
+        const iframeDoc = iframeRef.current.contentDocument;
+        if (iframeDoc) {
+          iframeDoc.open();
+          iframeDoc.write(html);
+          iframeDoc.close();
+          setTableHtml(html);
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
       setLoading(false);
     }
   };
 
-  const generateImageFromIframe = async () => {
-    try {
-      if (iframeRef.current && iframeRef.current.contentDocument?.body) {
-        const tableElement = iframeRef.current.contentDocument.querySelector('.table-container');
-        if (tableElement) {
-          const dataUrl = await toPng(tableElement as HTMLElement, { 
-            quality: 0.95,
-            pixelRatio: 2,
-            backgroundColor: 'white'
-          });
-          setImageUrl(dataUrl);
-        }
+  const captureIframe = async () => {
+    if (iframeRef.current) {
+      try {
+        // Use html-to-image to capture the iframe content
+        const dataUrl = await toPng(iframeRef.current.contentDocument?.body as HTMLElement, {
+          quality: 0.95,
+          pixelRatio: 2,
+        });
+        
+        setImageUrl(dataUrl);
+        setLoading(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error generating image:', error);
-      setError(error instanceof Error ? error.message : 'Unknown error');
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const downloadImage = () => {
+    if (imageUrl) {
+      const link = document.createElement('a');
+      link.download = 'table-image.png';
+      link.href = imageUrl;
+      link.click();
     }
   };
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">API Test Page</h1>
-      <p className="mb-4">Click the button below to test the API endpoint.</p>
+    <div className="container mx-auto p-8">
+      <h1 className="text-3xl font-bold mb-8 text-center">API Test Page</h1>
       
-      <Button 
-        onClick={testApi} 
-        disabled={loading}
-      >
-        {loading ? 'Loading...' : 'Test API'}
-      </Button>
+      {loading && <div className="mb-4 p-4 bg-blue-100 rounded">Loading...</div>}
       
       {error && (
-        <div className="mt-4 p-4 bg-red-100 text-red-800 rounded">
-          <p className="font-semibold">Error:</p>
-          <p>{error}</p>
+        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
+          Error: {error}
         </div>
       )}
 
-      {tableHtml && (
-        <div className="mt-4 hidden">
-          <iframe 
-            ref={iframeRef}
-            srcDoc={tableHtml}
-            width="100%"
-            height="400"
-            style={{ border: 'none' }}
-            title="Table Preview"
-          />
-        </div>
-      )}
-      
-      {imageUrl && (
-        <div className="mt-4">
-          <p className="mb-2 font-semibold">Generated Image:</p>
-          <div className="border p-2 bg-white">
-            <img 
-              src={imageUrl} 
-              alt="Generated table" 
-              className="w-full" 
-            />
-          </div>
-          <div className="mt-4">
-            <Button
-              onClick={() => {
-                const link = document.createElement('a');
-                link.download = 'table-image.png';
-                link.href = imageUrl;
-                link.click();
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold mb-2">Table Width Settings</h2>
+        <div className="border p-4 rounded bg-white mb-4">
+          <div className="flex items-center mb-4">
+            <div className="mr-4">Current width: {tableWidth}px</div>
+            <div 
+              className="relative flex-1 h-8 bg-gray-100 rounded cursor-pointer"
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const percentage = clickX / rect.width;
+                const newWidth = Math.max(400, Math.min(2000, Math.round(percentage * 2000)));
+                setTableWidth(newWidth);
               }}
             >
-              Download PNG
-            </Button>
+              <div 
+                className="absolute top-0 left-0 h-full bg-blue-200 rounded"
+                style={{ width: `${(tableWidth / 2000) * 100}%` }}
+              ></div>
+              <div 
+                className="absolute top-0 h-full w-4 cursor-ew-resize"
+                style={{ left: `calc(${(tableWidth / 2000) * 100}% - 8px)` }}
+                onMouseDown={handleResizeStart}
+              >
+                <div className="absolute top-0 left-1.5 h-full w-1 bg-blue-500 rounded"></div>
+              </div>
+            </div>
           </div>
+          <div className="text-sm text-gray-500">Drag the slider to adjust table width (400px - 2000px)</div>
+        </div>
+      </div>
+
+      {tableHtml && !loading && (
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-2">Generated Table</h2>
+          <div className="border p-4 bg-white mb-4">
+            <div 
+              ref={containerRef} 
+              className="relative" 
+              style={{ width: `${tableWidth}px`, margin: '0 auto' }}
+            >
+              <iframe 
+                ref={iframeRef} 
+                className="w-full h-[500px] border-0" 
+                title="Table Preview"
+              />
+            </div>
+          </div>
+          
+          {imageUrl && (
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold mb-2">Generated Image</h2>
+              <div className="border p-4 bg-white mb-4">
+                <div style={{ width: `${tableWidth}px`, margin: '0 auto' }}>
+                  <img 
+                    src={imageUrl} 
+                    alt="Generated table" 
+                    className="max-w-full h-auto" 
+                  />
+                </div>
+              </div>
+              <div className="text-center">
+                <Button onClick={downloadImage} className="mr-2">Download PNG</Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
+
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold mb-2">Test the API</h2>
+        <form onSubmit={handleSubmit} className="border p-4 rounded">
+          <div className="mb-4">
+            <label htmlFor="csvData" className="block font-medium mb-1">CSV Data:</label>
+            <textarea 
+              id="csvData" 
+              name="csvData" 
+              rows={10} 
+              className="w-full p-2 border rounded" 
+              placeholder="Paste CSV data here..."
+              defaultValue="Name,Age,City\nJohn,30,New York\nJane,25,Los Angeles\nBob,40,Chicago"
+            />
+          </div>
+          <Button type="submit">Generate Table</Button>
+        </form>
+      </div>
     </div>
   );
 }
