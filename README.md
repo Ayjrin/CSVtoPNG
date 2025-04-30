@@ -1,4 +1,23 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CSV to PNG Table Generator
+
+A clean, modern microservice that converts CSV data to PNG table images with a minimalist UI and API.
+
+## Features
+
+- Upload CSV files via drag-and-drop or file selection
+- Paste CSV text directly into a text area
+- Preview table rendering with shadcn/ui components
+- Generate and download table images as PNG
+- API endpoint for headless rendering
+
+## Technology Stack
+
+- **Framework**: Next.js 14+ with App Router
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **UI Components**: shadcn/ui (based on Radix UI)
+- **CSV Parsing**: PapaParse
+- **Image Generation**: html-to-image (client-side), Puppeteer (server-side)
 
 ## Getting Started
 
@@ -6,31 +25,33 @@ First, run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## API Usage
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Send a POST request to `/api/generate` with a JSON body containing the CSV data:
 
-## Learn More
+```bash
+curl -X POST http://localhost:3000/api/generate \
+  -H "Content-Type: application/json" \
+  -d '{"csvData": "name,role,status\nTony Reichert,CEO,Active\nZoey Lang,Technical Lead,Paused"}' \
+  --output table.png
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Building for Production
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run build
+npm start
+```
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The easiest way to deploy this application is to use the [Vercel Platform](https://vercel.com/new).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+vercel
+```
+# CSVtoPNG
